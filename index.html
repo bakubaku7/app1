@@ -4,22 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>特許明細書翻訳アプリ</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        /* アイコンをCSSで代替 */
+        .icon-upload::before { content: "📁"; }
+        .icon-settings::before { content: "⚙️"; }
+        .icon-zap::before { content: "⚡"; }
+        .icon-check::before { content: "✅"; }
+        .icon-globe::before { content: "🌐"; }
+        .icon-download::before { content: "💾"; }
+        .icon-loader::before { content: "⏳"; }
+        .icon-file::before { content: "📄"; }
+    </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useRef } = React;
-        const { 
-            Upload, FileText, Download, Settings, ChevronRight, 
-            AlertCircle, CheckCircle, Loader, Globe, Languages, 
-            FileCheck, Zap 
-        } = lucide;
 
         const PatentTranslator = () => {
             const [file, setFile] = useState(null);
@@ -30,12 +35,9 @@
             const [translationScope, setTranslationScope] = useState('');
             const [outputFormat, setOutputFormat] = useState('');
             const [translationStyle, setTranslationStyle] = useState('');
-            const [customTerms, setCustomTerms] = useState('');
             const [isProcessing, setIsProcessing] = useState(false);
             const [currentStep, setCurrentStep] = useState(1);
-            const [currentSubStep, setCurrentSubStep] = useState(1);
             const [translation, setTranslation] = useState(null);
-            const [glossary, setGlossary] = useState([]);
             const fileInputRef = useRef(null);
 
             // 言語検出のシミュレーション関数
@@ -44,8 +46,6 @@
                 if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return '日本語';
                 if (/[\uac00-\ud7af]/.test(text)) return '韓国語';
                 if (/[a-zA-Z]/.test(text) && /\b(patent|invention|claim|embodiment)\b/i.test(text)) return '英語';
-                if (/[äöüß]/.test(text)) return 'ドイツ語';
-                if (/[àâäéèêëïîôùûüÿç]/.test(text)) return 'フランス語';
                 return '英語';
             };
 
@@ -76,16 +76,8 @@
 2. 前記制御回路が電力管理機能を有する、請求項1に記載の半導体装置。
 
 3. 前記半導体基板がシリコンを含む、請求項1に記載の半導体装置。`;
-                    } else if (uploadedFile.type.startsWith('text/') || uploadedFile.name.endsWith('.txt')) {
-                        content = await uploadedFile.text();
                     } else {
-                        try {
-                            content = await uploadedFile.text();
-                        } catch (textError) {
-                            alert(`サポートされていないファイル形式です: ${uploadedFile.type}\nテキストファイル(.txt)またはPDFファイル(.pdf)をアップロードしてください。`);
-                            setIsProcessing(false);
-                            return;
-                        }
+                        content = await uploadedFile.text();
                     }
                     
                     if (!content.trim()) {
@@ -98,7 +90,6 @@
                     const detected = detectLanguage(content);
                     setDetectedLanguage(detected);
                     setCurrentStep(2);
-                    setCurrentSubStep(1);
                 } catch (error) {
                     console.error('ファイル読み込みエラー:', error);
                     alert(`ファイルの読み込みに失敗しました: ${error.message}`);
@@ -109,9 +100,6 @@
 
             const handleLanguageConfirmation = (confirmed) => {
                 setLanguageConfirmed(confirmed);
-                if (confirmed) {
-                    setCurrentSubStep(2);
-                }
             };
 
             const handleTranslate = async () => {
@@ -120,33 +108,15 @@
                 
                 // 翻訳処理のシミュレーション
                 setTimeout(() => {
-                    const sampleGlossary = [
-                        { original: 'semiconductor device', translation: '半導体装置', note: '' },
-                        { original: 'comprising', translation: '含む', note: 'オープンエンド表現' },
-                        { original: 'substrate', translation: '基板', note: '' },
-                        { original: 'electrode', translation: '電極', note: '' },
-                        { original: 'control circuit', translation: '制御回路', note: '' },
-                        { original: 'power management', translation: '電力管理', note: '' },
-                        { original: 'technical field', translation: '技術分野', note: '' },
-                        { original: 'background art', translation: '背景技術', note: '' },
-                        { original: 'invention', translation: '発明', note: '' },
-                        { original: 'claim', translation: '請求項', note: '' }
-                    ];
-
                     const sampleTranslation = {
                         metadata: {
                             patentNumber: 'サンプル特許文書',
-                            applicant: '不明',
                             originalLanguage: detectedLanguage,
                             translationDirection: translationDirection === 'japanese' ? '日本語' : '英語',
-                            scope: getScopeText(translationScope),
-                            outputFormat: getFormatText(outputFormat),
-                            style: getStyleText(translationStyle),
-                            technicalField: '半導体装置'
+                            scope: translationScope,
+                            outputFormat: outputFormat,
+                            style: translationStyle
                         },
-                        abstract: translationDirection === 'japanese' 
-                            ? 'この発明は半導体装置に関し、特に、改良された処理性能と低消費電力を有する半導体装置に関する。'
-                            : 'This invention relates to semiconductor devices, and more particularly to semiconductor devices having improved processing performance and low power consumption.',
                         claims: translationDirection === 'japanese'
                             ? [
                                 '半導体基板と、前記半導体基板上に形成された第1の電極と、前記第1の電極に接続された制御回路とを含む、半導体装置。',
@@ -171,40 +141,14 @@
                         }
                     };
 
-                    setGlossary(sampleGlossary);
                     setTranslation(sampleTranslation);
                     setCurrentStep(4);
                     setIsProcessing(false);
                 }, 3000);
             };
 
-            const getScopeText = (scope) => {
-                const scopeMap = {
-                    'full': '全文',
-                    'all-claims': '全請求項',
-                    'independent-claims': '独立請求項のみ',
-                    'claim-1': '請求項1のみ',
-                    'custom': 'カスタム範囲'
-                };
-                return scopeMap[scope] || scope;
-            };
-
-            const getFormatText = (format) => {
-                const formatMap = {
-                    'translation-only': '訳文のみ',
-                    'two-stage': '原文→訳文の二段表示',
-                    'parallel': '対訳表形式'
-                };
-                return formatMap[format] || format;
-            };
-
-            const getStyleText = (style) => {
-                const styleMap = {
-                    'literal': '直訳寄り',
-                    'balanced': 'バランス型',
-                    'readable': '読みやすさ優先'
-                };
-                return styleMap[style] || style;
+            const canProceedToTranslation = () => {
+                return languageConfirmed && translationDirection && translationScope && outputFormat && translationStyle;
             };
 
             const downloadTranslation = () => {
@@ -215,16 +159,8 @@
 
 【メタ情報】
 文書: ${translation.metadata.patentNumber}
-出願人: ${translation.metadata.applicant}
 元言語: ${translation.metadata.originalLanguage}
 翻訳方向: ${translation.metadata.translationDirection}
-翻訳範囲: ${translation.metadata.scope}
-出力形式: ${translation.metadata.outputFormat}
-翻訳スタイル: ${translation.metadata.style}
-技術分野: ${translation.metadata.technicalField}
-
-【用語集】
-${glossary.map(term => `${term.original} → ${term.translation}${term.note ? ` (${term.note})` : ''}`).join('\n')}
 
 【技術分野】
 ${translation.specification.technicalField}
@@ -259,18 +195,11 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                 setTranslationScope('');
                 setOutputFormat('');
                 setTranslationStyle('');
-                setCustomTerms('');
                 setTranslation(null);
-                setGlossary([]);
                 setCurrentStep(1);
-                setCurrentSubStep(1);
                 if (fileInputRef.current) {
                     fileInputRef.current.value = '';
                 }
-            };
-
-            const canProceedToTranslation = () => {
-                return languageConfirmed && translationDirection && translationScope && outputFormat && translationStyle;
             };
 
             return (
@@ -278,7 +207,7 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                     <div className="container mx-auto px-4 py-8">
                         <header className="text-center mb-8">
                             <div className="flex items-center justify-center mb-4">
-                                <Globe className="w-10 h-10 text-indigo-600 mr-3" />
+                                <span className="icon-globe text-4xl mr-3"></span>
                                 <h1 className="text-4xl font-bold text-gray-800">特許明細書翻訳アプリ</h1>
                             </div>
                             <p className="text-gray-600 text-lg">改良プロンプトによるプロレベル特許翻訳</p>
@@ -288,19 +217,19 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                         <div className="flex justify-center mb-8">
                             <div className="flex items-center space-x-4">
                                 {[
-                                    { num: 1, icon: Upload, label: 'アップロード' },
-                                    { num: 2, icon: Settings, label: '設定確認' },
-                                    { num: 3, icon: Zap, label: '翻訳実行' },
-                                    { num: 4, icon: FileCheck, label: '結果表示' }
+                                    { num: 1, icon: 'icon-upload', label: 'アップロード' },
+                                    { num: 2, icon: 'icon-settings', label: '設定確認' },
+                                    { num: 3, icon: 'icon-zap', label: '翻訳実行' },
+                                    { num: 4, icon: 'icon-check', label: '結果表示' }
                                 ].map((step, index) => (
                                     <div key={step.num} className="flex items-center">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold ${
                                             currentStep >= step.num ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
                                         }`}>
-                                            <step.icon className="w-5 h-5" />
+                                            <span className={step.icon}></span>
                                         </div>
                                         <div className="ml-2 text-sm text-gray-600 hidden sm:block">{step.label}</div>
-                                        {index < 3 && <ChevronRight className="w-5 h-5 text-gray-400 ml-2" />}
+                                        {index < 3 && <span className="text-gray-400 ml-2">→</span>}
                                     </div>
                                 ))}
                             </div>
@@ -311,7 +240,7 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                             {currentStep === 1 && (
                                 <div className="bg-white rounded-xl shadow-lg p-8">
                                     <h2 className="text-2xl font-semibold mb-6 flex items-center">
-                                        <Upload className="w-6 h-6 mr-2 text-indigo-600" />
+                                        <span className="icon-upload mr-2"></span>
                                         第1段階: ファイル受信・言語検出
                                     </h2>
                                     
@@ -323,7 +252,7 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                             onChange={handleFileUpload}
                                             className="hidden"
                                         />
-                                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                        <span className="icon-file text-6xl text-gray-400 block mb-4"></span>
                                         <p className="text-gray-600 mb-4">特許公報（PDF/テキスト）をアップロードしてください</p>
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
@@ -332,7 +261,7 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                         >
                                             {isProcessing ? (
                                                 <span className="flex items-center">
-                                                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                                                    <span className="icon-loader mr-2"></span>
                                                     言語検出中...
                                                 </span>
                                             ) : (
@@ -343,22 +272,19 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                 </div>
                             )}
 
-                            {/* ステップ2以降は元のコードと同じ構造を維持 */}
+                            {/* ステップ2: 設定確認 */}
                             {currentStep === 2 && (
                                 <div className="bg-white rounded-xl shadow-lg p-8">
                                     <h2 className="text-2xl font-semibold mb-6 flex items-center">
-                                        <Settings className="w-6 h-6 mr-2 text-indigo-600" />
+                                        <span className="icon-settings mr-2"></span>
                                         第2段階: 翻訳設定の確認
                                     </h2>
 
-                                    {/* 言語確認 */}
-                                    {currentSubStep === 1 && (
-                                        <div className="space-y-6">
+                                    <div className="space-y-6">
+                                        {/* 言語確認 */}
+                                        {!languageConfirmed && (
                                             <div className="bg-blue-50 p-6 rounded-lg">
-                                                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                                                    <Languages className="w-5 h-5 mr-2 text-blue-600" />
-                                                    1. 元言語検出結果の確認
-                                                </h3>
+                                                <h3 className="text-lg font-semibold mb-4">1. 元言語検出結果の確認</h3>
                                                 <p className="text-lg mb-4">
                                                     元言語を「<span className="font-bold text-blue-600">{detectedLanguage}</span>」と判定しました。
                                                 </p>
@@ -378,53 +304,32 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                                     </button>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* 設定項目（簡略版） */}
-                                    {currentSubStep >= 2 && languageConfirmed && (
-                                        <div className="space-y-6">
-                                            <div className="bg-green-50 p-4 rounded-lg flex items-center">
-                                                <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                                                <span className="text-green-700">言語確認完了: {detectedLanguage}</span>
-                                            </div>
-
-                                            {/* 翻訳方向 */}
-                                            <div className="p-6 rounded-lg border">
-                                                <h3 className="text-lg font-semibold mb-4">2. 翻訳方向</h3>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <button
-                                                        onClick={() => {
-                                                            setTranslationDirection('japanese');
-                                                            setCurrentSubStep(3);
-                                                        }}
-                                                        className={`p-4 border-2 rounded-lg transition-colors ${
-                                                            translationDirection === 'japanese' 
-                                                                ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
-                                                                : 'border-gray-200 hover:border-gray-300'
-                                                        }`}
-                                                    >
-                                                        日本語に翻訳（和訳）
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setTranslationDirection('english');
-                                                            setCurrentSubStep(3);
-                                                        }}
-                                                        className={`p-4 border-2 rounded-lg transition-colors ${
-                                                            translationDirection === 'english' 
-                                                                ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
-                                                                : 'border-gray-200 hover:border-gray-300'
-                                                        }`}
-                                                    >
-                                                        英語に翻訳（英訳）
-                                                    </button>
+                                        {/* 設定項目 */}
+                                        {languageConfirmed && (
+                                            <>
+                                                <div className="bg-green-50 p-4 rounded-lg flex items-center">
+                                                    <span className="icon-check text-green-600 mr-2"></span>
+                                                    <span className="text-green-700">言語確認完了: {detectedLanguage}</span>
                                                 </div>
-                                            </div>
 
-                                            {/* 他の設定項目（簡略化） */}
-                                            {translationDirection && (
-                                                <>
+                                                {/* 翻訳方向 */}
+                                                <div className="p-6 rounded-lg border">
+                                                    <h3 className="text-lg font-semibold mb-4">2. 翻訳方向</h3>
+                                                    <select 
+                                                        value={translationDirection}
+                                                        onChange={(e) => setTranslationDirection(e.target.value)}
+                                                        className="w-full p-3 border rounded-lg"
+                                                    >
+                                                        <option value="">選択してください</option>
+                                                        <option value="japanese">日本語に翻訳（和訳）</option>
+                                                        <option value="english">英語に翻訳（英訳）</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* 翻訳範囲 */}
+                                                {translationDirection && (
                                                     <div className="p-6 rounded-lg border">
                                                         <h3 className="text-lg font-semibold mb-4">3. 翻訳範囲</h3>
                                                         <select 
@@ -434,11 +339,14 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                                         >
                                                             <option value="">選択してください</option>
                                                             <option value="full">全文（要約+請求項+明細書）</option>
-                                                            <option value="all-claims">全請求項のみ</option>
-                                                            <option value="claim-1">請求項1のみ</option>
+                                                            <option value="claims">全請求項のみ</option>
+                                                            <option value="claim1">請求項1のみ</option>
                                                         </select>
                                                     </div>
+                                                )}
 
+                                                {/* 出力形式 */}
+                                                {translationScope && (
                                                     <div className="p-6 rounded-lg border">
                                                         <h3 className="text-lg font-semibold mb-4">4. 出力形式</h3>
                                                         <select 
@@ -448,11 +356,13 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                                         >
                                                             <option value="">選択してください</option>
                                                             <option value="translation-only">訳文のみ</option>
-                                                            <option value="two-stage">原文→訳文の二段表示</option>
                                                             <option value="parallel">対訳表形式</option>
                                                         </select>
                                                     </div>
+                                                )}
 
+                                                {/* 翻訳スタイル */}
+                                                {outputFormat && (
                                                     <div className="p-6 rounded-lg border">
                                                         <h3 className="text-lg font-semibold mb-4">5. 翻訳スタイル</h3>
                                                         <select 
@@ -466,34 +376,35 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                                             <option value="readable">読みやすさ優先</option>
                                                         </select>
                                                     </div>
+                                                )}
 
-                                                    {canProceedToTranslation() && (
-                                                        <div className="pt-6">
-                                                            <button
-                                                                onClick={handleTranslate}
-                                                                className="w-full bg-indigo-600 text-white py-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium text-lg"
-                                                            >
-                                                                翻訳を開始する
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
+                                                {/* 翻訳開始ボタン */}
+                                                {canProceedToTranslation() && (
+                                                    <div className="pt-6">
+                                                        <button
+                                                            onClick={handleTranslate}
+                                                            className="w-full bg-indigo-600 text-white py-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium text-lg"
+                                                        >
+                                                            翻訳を開始する
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
                             {/* ステップ3: 翻訳処理中 */}
                             {currentStep === 3 && (
                                 <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-                                    <Loader className="w-16 h-16 text-indigo-600 mx-auto mb-6 animate-spin" />
+                                    <span className="icon-loader text-6xl text-indigo-600 block mb-6"></span>
                                     <h2 className="text-2xl font-semibold mb-4">翻訳実行中</h2>
                                     <p className="text-gray-600">改良プロンプトによる高品質翻訳を実行しています...</p>
                                 </div>
                             )}
 
-                            {/* ステップ4: 結果表示（簡略版） */}
+                            {/* ステップ4: 結果表示 */}
                             {currentStep === 4 && translation && (
                                 <div className="space-y-6">
                                     <div className="bg-white rounded-xl shadow-lg p-6">
@@ -529,7 +440,7 @@ ${translation.claims.map((claim, index) => `[請求項${index + 1}] ${claim}`).j
                                             onClick={downloadTranslation}
                                             className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center"
                                         >
-                                            <Download className="w-5 h-5 mr-2" />
+                                            <span className="icon-download mr-2"></span>
                                             翻訳結果をダウンロード
                                         </button>
                                         <button
